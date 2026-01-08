@@ -1,4 +1,4 @@
-import { FollowerInstance, HandCard } from './card.types';
+import { FollowerInstance, HandCard, SpellCardDefinition } from './card.types';
 
 // プレイヤー識別子
 export type PlayerId = 'player1' | 'player2';
@@ -9,11 +9,13 @@ export type GamePhase = 'waiting' | 'playing' | 'ended';
 // ターンフェーズ
 export type TurnPhase = 'start' | 'main' | 'end';
 
-// 攻撃選択状態
+// 選択状態
 export interface SelectionState {
   selectedAttacker: string | null;
   validTargets: string[];
-  mode: 'none' | 'selectAttacker' | 'selectTarget';
+  mode: 'none' | 'selectAttacker' | 'selectTarget' | 'spell_target';
+  pendingSpell: SpellCardDefinition | null;
+  pendingSpellCardIndex: number;
 }
 
 // プレイヤーフィールド
@@ -35,6 +37,11 @@ export interface PlayerState {
   currentPP: number;
   maxPP: number;
   health: number;
+  evolutionPoints: number;          // 残り進化権 (先攻2, 後攻2)
+  superEvolutionPoints: number;     // 残り超進化権 (2)
+  isFirstPlayer: boolean;           // 先攻かどうか
+  hasEvolvedThisTurn: boolean;      // このターン進化したか
+  hasSuperEvolvedThisTurn: boolean; // このターン超進化したか
 }
 
 // ゲーム状態

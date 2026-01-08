@@ -1,3 +1,8 @@
+import { SpellEffect, SpellTargetType } from './spell.types';
+
+// カードタイプ
+export type CardType = 'follower' | 'spell';
+
 // フォロワーの能力
 export type FollowerAbility =
   | 'Rush'   // 出したターンにフォロワーを攻撃可能
@@ -6,8 +11,9 @@ export type FollowerAbility =
   | 'Bane'   // ダメージを与えたフォロワーを破壊
   | 'Drain'; // 攻撃時にリーダーを回復
 
-// カード定義（テンプレート）
+// フォロワーカード定義（テンプレート）
 export interface FollowerCardDefinition {
+  type: 'follower';
   id: string;
   name: string;
   cost: number;
@@ -16,6 +22,20 @@ export interface FollowerCardDefinition {
   abilities: FollowerAbility[];
   description?: string;
 }
+
+// スペルカード定義
+export interface SpellCardDefinition {
+  type: 'spell';
+  id: string;
+  name: string;
+  cost: number;
+  targetType: SpellTargetType;
+  effects: SpellEffect[];
+  description?: string;
+}
+
+// カード定義のUnion型
+export type CardDefinition = FollowerCardDefinition | SpellCardDefinition;
 
 // 盤面上のフォロワーインスタンス
 export interface FollowerInstance {
@@ -28,10 +48,14 @@ export interface FollowerInstance {
   canAttack: boolean;
   hasAttacked: boolean;
   turnPlayed: number;
+  isEvolved: boolean;           // 進化済み
+  isSuperEvolved: boolean;      // 超進化済み
+  superEvolvedThisTurn: boolean; // このターン超進化したか（ビヨンド：自ターン耐性用）
 }
 
 // 手札のカード
 export interface HandCard {
   instanceId: string;
   definitionId: string;
+  cardType: CardType;
 }

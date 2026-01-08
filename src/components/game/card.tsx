@@ -1,9 +1,14 @@
 'use client';
 
-import { FollowerInstance, FollowerCardDefinition } from '@/types/card.types';
+import {
+  FollowerInstance,
+  FollowerCardDefinition,
+  SpellCardDefinition,
+  CardDefinition,
+} from '@/types/card.types';
 
 interface CardProps {
-  definition: FollowerCardDefinition;
+  definition: CardDefinition;
   instance?: FollowerInstance;
   inHand?: boolean;
   isSelected?: boolean;
@@ -118,8 +123,32 @@ const cardEmojis: Record<string, string> = {
   'core-artifact': '💠', 'prime-artifact': '✨', 'ultra-artifact': '⭐', 'toy-soldier': '🪖',
 };
 
+const spellEmojis: Record<string, string> = {
+  // ダメージ系
+  fireball: '🔥', blazing_breath: '🐉', lightning_bolt: '⚡', meteor_strike: '☄️',
+  inferno: '🌋', shadow_bolt: '🌑', ice_lance: '🧊', flame_wave: '🔥',
+  // 回復系
+  healing_prayer: '💚', natures_blessing: '🌿', divine_protection: '✨', rejuvenation: '🌸',
+  // ドロー系
+  arcane_insight: '📖', fate_hand: '🎴', knowledge_scroll: '📜',
+  // バフ系
+  warriors_blessing: '⚔️', divine_strength: '💪', battle_cry: '📯',
+  // デバフ系
+  curse: '💀', weakness: '😵', silence: '🤫',
+  // 破壊系
+  execution: '⚰️', banishment: '🌀', annihilation: '💥',
+  // 召喚系
+  summon_fairy: '🧚', raise_skeleton: '💀', create_golem: '🗿',
+  // 複合系
+  flame_and_heal: '🔥💚', draw_and_buff: '📖⚔️', damage_and_draw: '💥📖',
+};
+
 function getCardEmoji(id: string): string {
   return cardEmojis[id] || '❓';
+}
+
+function getSpellEmoji(id: string): string {
+  return spellEmojis[id] || '✨';
 }
 
 export function Card({
@@ -134,14 +163,12 @@ export function Card({
   onMouseDown,
   onDetailView,
 }: CardProps) {
-  const attack = instance?.currentAttack ?? definition.baseAttack;
-  const health = instance?.currentHealth ?? definition.baseHealth;
-  const abilities = instance?.abilities ?? definition.abilities;
+  const isSpell = definition.type === 'spell';
 
   const getBorderColor = () => {
     if (isSelected) return 'border-yellow-400 shadow-yellow-400/50';
     if (isValidTarget) return 'border-red-500 shadow-red-500/50 animate-pulse';
-    return 'border-gray-600';
+    return isSpell ? 'border-purple-600' : 'border-gray-600';
   };
 
   const getOpacity = () => {
@@ -149,6 +176,76 @@ export function Card({
     if (instance && instance.hasAttacked) return 'opacity-70';
     return '';
   };
+
+  const getBackgroundGradient = () => {
+    if (isSpell) {
+      return 'bg-gradient-to-b from-purple-800 to-purple-950';
+    }
+    return 'bg-gradient-to-b from-gray-700 to-gray-900';
+  };
+
+  // スペルカードの場合
+  if (isSpell) {
+    const spellDef = definition as SpellCardDefinition;
+    return (
+      <div
+        className={`
+          relative w-24 h-36 rounded-lg border-2 ${getBorderColor()} ${getOpacity()}
+          ${getBackgroundGradient()}
+          cursor-pointer hover:scale-105 transition-all duration-200
+          flex flex-col shadow-lg select-none
+          ${isSelected ? 'shadow-lg scale-105 z-10' : ''}
+          ${isValidTarget ? 'shadow-lg shadow-red-500/50' : ''}
+        `}
+        onClick={() => {
+          onDetailView?.();
+          onClick?.();
+        }}
+        onMouseUp={onMouseUp}
+        onMouseDown={onMouseDown}
+      >
+        {/* コスト */}
+        <div className="absolute -top-2 -left-2 w-7 h-7 rounded-full bg-blue-600 border-2 border-blue-400
+                        flex items-center justify-center text-white font-bold text-sm z-10">
+          {spellDef.cost}
+        </div>
+
+        {/* スペルアイコン */}
+        <div className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-purple-600 border-2 border-purple-400
+                        flex items-center justify-center z-10">
+          <span className="text-sm">S</span>
+        </div>
+
+        {/* カード名 */}
+        <div className="text-center text-xs text-white mt-5 px-1 truncate font-medium">
+          {spellDef.name}
+        </div>
+
+        {/* スペルアート */}
+        <div className="flex-1 mx-2 my-1 bg-gradient-to-br from-purple-600 to-purple-800 rounded flex items-center justify-center">
+          <span className="text-3xl">
+            {getSpellEmoji(spellDef.id)}
+          </span>
+        </div>
+
+        {/* 効果説明 */}
+        <div className="text-center text-[9px] text-purple-200 px-1 pb-2 line-clamp-2">
+          {spellDef.description || 'スペル'}
+        </div>
+
+        {/* 攻撃対象インジケーター */}
+        {isValidTarget && (
+          <div className="absolute -inset-1 border-2 border-red-400 rounded-xl animate-pulse pointer-events-none" />
+        )}
+      </div>
+    );
+  }
+
+  // フォロワーカードの場合
+  const followerDef = definition as FollowerCardDefinition;
+  const attack = instance?.currentAttack ?? followerDef.baseAttack;
+  const health = instance?.currentHealth ?? followerDef.baseHealth;
+  const abilities = instance?.abilities ?? followerDef.abilities;
 
   const showSummoningSickness =
     instance && !instance.canAttack && !instance.hasAttacked;
@@ -158,7 +255,7 @@ export function Card({
       data-follower-id={instance?.instanceId}
       className={`
         relative w-24 h-36 rounded-lg border-2 ${getBorderColor()} ${getOpacity()}
-        bg-gradient-to-b from-gray-700 to-gray-900
+        ${getBackgroundGradient()}
         cursor-pointer hover:scale-105 transition-all duration-200
         flex flex-col shadow-lg select-none
         ${isSelected ? 'shadow-lg scale-105 z-10' : ''}
@@ -174,18 +271,18 @@ export function Card({
       {/* コスト */}
       <div className="absolute -top-2 -left-2 w-7 h-7 rounded-full bg-blue-600 border-2 border-blue-400
                       flex items-center justify-center text-white font-bold text-sm z-10">
-        {definition.cost}
+        {followerDef.cost}
       </div>
 
       {/* カード名 */}
       <div className="text-center text-xs text-white mt-5 px-1 truncate font-medium">
-        {definition.name}
+        {followerDef.name}
       </div>
 
       {/* カードアート（プレースホルダー） */}
       <div className="flex-1 mx-2 my-1 bg-gradient-to-br from-gray-500 to-gray-700 rounded flex items-center justify-center">
         <span className="text-3xl opacity-70">
-          {getCardEmoji(definition.id)}
+          {getCardEmoji(followerDef.id)}
         </span>
       </div>
 
@@ -231,6 +328,32 @@ export function Card({
       {/* 攻撃対象インジケーター */}
       {isValidTarget && (
         <div className="absolute -inset-1 border-2 border-red-400 rounded-xl animate-pulse pointer-events-none" />
+      )}
+
+      {/* 進化インジケーター */}
+      {instance?.isEvolved && (
+        <div className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-purple-600 border-2 border-purple-400
+                        flex items-center justify-center z-10">
+          <span className="text-sm">E</span>
+        </div>
+      )}
+
+      {/* 超進化インジケーター */}
+      {instance?.isSuperEvolved && (
+        <div className={`absolute -top-2 -right-2 w-7 h-7 rounded-full border-2 flex items-center justify-center z-10 ${
+          instance.superEvolvedThisTurn
+            ? 'bg-gradient-to-br from-yellow-400 to-orange-500 border-yellow-200 animate-pulse'
+            : 'bg-yellow-500 border-yellow-300'
+        }`}>
+          <span className="text-sm">{instance.superEvolvedThisTurn ? '★' : 'S'}</span>
+        </div>
+      )}
+
+      {/* 超進化耐性表示（自ターン中） */}
+      {instance?.superEvolvedThisTurn && (
+        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 px-1 py-0.5 bg-cyan-600/90 rounded text-[8px] text-white whitespace-nowrap z-10">
+          耐性発動中
+        </div>
       )}
     </div>
   );

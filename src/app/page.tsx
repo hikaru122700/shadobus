@@ -7,8 +7,9 @@ import { Board } from '@/components/game/board';
 import { Hand } from '@/components/game/hand';
 import { TurnTransitionOverlay } from '@/components/game/turn-transition-overlay';
 import { CardDetailPanel } from '@/components/game/card-detail-panel';
+import { LeaderDamageEffect } from '@/components/game/leader-damage-effect';
 import { PlayerId } from '@/types/game.types';
-import { FollowerCardDefinition, FollowerInstance } from '@/types/card.types';
+import { CardDefinition, FollowerCardDefinition, FollowerInstance } from '@/types/card.types';
 
 export default function GamePage() {
   const phase = useGameStore((state) => state.phase);
@@ -16,12 +17,18 @@ export default function GamePage() {
   const turnNumber = useGameStore((state) => state.turnNumber);
   const players = useGameStore((state) => state.players);
   const selection = useGameStore((state) => state.selection);
+  const board = useGameStore((state) => state.board);
   const startGame = useGameStore((state) => state.startGame);
   const endTurn = useGameStore((state) => state.endTurn);
   const cancelSelection = useGameStore((state) => state.cancelSelection);
   const handleLeaderClick = useGameStore((state) => state.handleLeaderClick);
   const executeAttack = useGameStore((state) => state.executeAttack);
   const resetGame = useGameStore((state) => state.resetGame);
+  const evolveFollower = useGameStore((state) => state.evolveFollower);
+  const superEvolveFollower = useGameStore((state) => state.superEvolveFollower);
+  const canEvolve = useGameStore((state) => state.canEvolve);
+  const canSuperEvolve = useGameStore((state) => state.canSuperEvolve);
+  const selectSpellTarget = useGameStore((state) => state.selectSpellTarget);
 
   // ターン切り替え演出のステート
   const [turnTransition, setTurnTransition] = useState<{
@@ -32,13 +39,20 @@ export default function GamePage() {
 
   // カード詳細パネルのステート
   const [detailedCard, setDetailedCard] = useState<{
-    definition: FollowerCardDefinition;
+    definition: CardDefinition;
     instance?: FollowerInstance;
   } | null>(null);
 
+  // リーダーダメージエフェクトのステート
+  const [leaderDamageEffect, setLeaderDamageEffect] = useState<{
+    damage: number;
+    targetPlayerId: PlayerId;
+  } | null>(null);
+  const [isShaking, setIsShaking] = useState(false);
+
   // カード詳細表示のコールバック
   const handleCardDetailView = (
-    definition: FollowerCardDefinition,
+    definition: CardDefinition,
     instance?: FollowerInstance
   ) => {
     setDetailedCard({ definition, instance });
@@ -50,7 +64,28 @@ export default function GamePage() {
 
   // リーダーへのドラッグ攻撃
   const handleLeaderMouseUp = () => {
-    if (canAttackOpponentLeader) {
+    if (canAttackOpponentLeader && selection.selectedAttacker) {
+      // 攻撃者のダメージを取得（現在のターンのプレイヤーのフィールドから）
+      const attackerField = currentTurn === 'player1' ? board.player1Field : board.player2Field;
+      const attacker = attackerField.followers.find(
+        (f) => f?.instanceId === selection.selectedAttacker
+      );
+
+      if (attacker) {
+        // 相手のリーダーをターゲットにする
+        const targetPlayerId = currentTurn === 'player1' ? 'player2' : 'player1';
+
+        // エフェクト発動
+        setLeaderDamageEffect({
+          damage: attacker.currentAttack,
+          targetPlayerId,
+        });
+        setIsShaking(true);
+
+        // シェイクを0.3秒後に解除
+        setTimeout(() => setIsShaking(false), 300);
+      }
+
       executeAttack(LEADER_TARGET_ID);
     }
   };
@@ -81,6 +116,11 @@ export default function GamePage() {
     selection.mode === 'selectTarget' &&
     selection.validTargets.includes(LEADER_TARGET_ID);
 
+  // スペルのターゲットとしてリーダーが選択可能かチェック
+  const canSpellTargetLeader =
+    selection.mode === 'spell_target' &&
+    selection.validTargets.includes(LEADER_TARGET_ID);
+
   // 勝敗判定
   const winner =
     phase === 'ended'
@@ -90,11 +130,12 @@ export default function GamePage() {
       : null;
 
   return (
-    <main className="min-h-screen flex text-white">
+    <main className={`min-h-screen flex text-white ${isShaking ? 'animate-screen-shake' : ''}`}>
       {/* 左サイドバー：自分のリーダー情報（下部配置） */}
       <aside className="w-36 bg-gray-800 border-r border-gray-700 flex flex-col items-center py-4 justify-end">
         <div className="text-gray-400 text-sm mb-2">あなた</div>
         <div
+          data-leader-id="player1"
           className={`w-24 h-24 rounded-full bg-gradient-to-br from-blue-600 to-blue-800 border-4 border-blue-400 flex items-center justify-center mb-2 transition-all ${
             currentTurn === 'player1' ? 'ring-4 ring-yellow-400 ring-opacity-50' : ''
           }`}
@@ -196,6 +237,19 @@ export default function GamePage() {
             definition={detailedCard.definition}
             instance={detailedCard.instance}
             onClose={handleCloseDetailPanel}
+            canEvolve={detailedCard.instance ? canEvolve(detailedCard.instance.instanceId) : false}
+            canSuperEvolve={detailedCard.instance ? canSuperEvolve(detailedCard.instance.instanceId) : false}
+            onEvolve={() => detailedCard.instance && evolveFollower(detailedCard.instance.instanceId)}
+            onSuperEvolve={() => detailedCard.instance && superEvolveFollower(detailedCard.instance.instanceId)}
+          />
+        )}
+
+        {/* リーダーダメージエフェクト */}
+        {leaderDamageEffect && (
+          <LeaderDamageEffect
+            damage={leaderDamageEffect.damage}
+            targetPlayerId={leaderDamageEffect.targetPlayerId}
+            onComplete={() => setLeaderDamageEffect(null)}
           />
         )}
 
@@ -244,7 +298,11 @@ export default function GamePage() {
         {/* フッター：ステータス表示 */}
         <footer className="bg-gray-800 p-2 flex justify-center items-center border-t border-gray-700">
           <div className="text-gray-400 text-sm">
-            {selection.mode === 'selectTarget'
+            {selection.mode === 'spell_target'
+              ? canSpellTargetLeader
+                ? `✨ ${selection.pendingSpell?.name || 'スペル'}のターゲットを選択（リーダーも可）`
+                : `✨ ${selection.pendingSpell?.name || 'スペル'}のターゲットを選択`
+              : selection.mode === 'selectTarget'
               ? canAttackOpponentLeader
                 ? '⚔️ 相手にドラッグして攻撃（リーダーも可）'
                 : '⚔️ 相手フォロワーにドラッグして攻撃'
@@ -259,11 +317,17 @@ export default function GamePage() {
       <aside className="w-36 bg-gray-800 border-l border-gray-700 flex flex-col items-center py-4">
         <div className="text-gray-400 text-sm mb-2">相手 (AI)</div>
         <div
-          onClick={() => handleLeaderClick('player2')}
+          onClick={() => {
+            if (canSpellTargetLeader) {
+              selectSpellTarget(LEADER_TARGET_ID);
+            } else {
+              handleLeaderClick('player2');
+            }
+          }}
           onMouseUp={handleLeaderMouseUp}
           data-leader-id="player2"
           className={`w-24 h-24 rounded-full bg-gradient-to-br from-red-600 to-red-800 border-4 flex items-center justify-center mb-2 transition-all cursor-pointer select-none ${
-            canAttackOpponentLeader
+            canAttackOpponentLeader || canSpellTargetLeader
               ? 'border-yellow-400 ring-4 ring-yellow-400 ring-opacity-50 animate-pulse scale-110'
               : 'border-red-400'
           } ${currentTurn === 'player2' ? 'ring-4 ring-yellow-400 ring-opacity-50' : ''}`}
@@ -272,6 +336,9 @@ export default function GamePage() {
         </div>
         {canAttackOpponentLeader && (
           <div className="text-yellow-400 text-xs mb-1 animate-bounce">ドラッグで攻撃！</div>
+        )}
+        {canSpellTargetLeader && (
+          <div className="text-purple-400 text-xs mb-1 animate-bounce">クリックでスペル発動！</div>
         )}
         <div className="text-center">
           <div className="text-gray-400 text-xs">HP</div>
@@ -287,7 +354,69 @@ export default function GamePage() {
         </div>
 
         {/* PP表示（右下部） */}
-        <div className="mt-auto">
+        <div className="mt-auto space-y-3">
+          {/* EP/EPP表示 */}
+          <div className="bg-gray-900 rounded-xl p-3 border border-gray-600">
+            <div className="text-gray-400 text-xs text-center mb-2">進化権</div>
+            <div className="flex justify-center gap-3">
+              {/* EP（通常進化）- ビヨンド仕様：先攻後攻ともに2 */}
+              <div className="text-center">
+                <div className="text-purple-400 text-xs mb-1">EP</div>
+                <div className="flex gap-1 justify-center">
+                  {Array.from({ length: 2 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className={`w-4 h-4 rounded-full border-2 ${
+                        i < players[currentTurn].evolutionPoints
+                          ? 'bg-purple-500 border-purple-400'
+                          : 'bg-gray-700 border-gray-600'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+              {/* EPP（超進化） */}
+              <div className="text-center">
+                <div className="text-yellow-400 text-xs mb-1">EPP</div>
+                <div className="flex gap-1 justify-center">
+                  {Array.from({ length: 2 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className={`w-4 h-4 rounded-full border-2 ${
+                        i < players[currentTurn].superEvolutionPoints
+                          ? 'bg-yellow-500 border-yellow-400'
+                          : 'bg-gray-700 border-gray-600'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+            {/* ビヨンド仕様：進化/超進化の使用可能ターン表示 */}
+            {(() => {
+              const isFirst = players[currentTurn].isFirstPlayer;
+              const epTurn = isFirst ? 5 : 4;
+              const sepTurn = isFirst ? 7 : 6;
+              const canEvolveNow = turnNumber >= epTurn;
+              const canSuperEvolveNow = turnNumber >= sepTurn;
+
+              if (!canEvolveNow) {
+                return (
+                  <div className="text-gray-500 text-xs text-center mt-2">
+                    EP: T{epTurn}から / SEP: T{sepTurn}から
+                  </div>
+                );
+              } else if (!canSuperEvolveNow) {
+                return (
+                  <div className="text-gray-500 text-xs text-center mt-2">
+                    SEP: T{sepTurn}から使用可能
+                  </div>
+                );
+              }
+              return null;
+            })()}
+          </div>
+
           <div className="bg-gray-900 rounded-xl p-4 border border-gray-600">
             <div className="text-gray-400 text-xs text-center mb-1">残りPP</div>
             <div className="text-center">

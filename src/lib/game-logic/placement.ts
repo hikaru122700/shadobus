@@ -53,6 +53,9 @@ export function createFollowerInstance(
     canAttack: hasRushOrStorm,
     hasAttacked: false,
     turnPlayed: turnNumber,
+    isEvolved: false,
+    isSuperEvolved: false,
+    superEvolvedThisTurn: false,
   };
 }
 

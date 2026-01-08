@@ -4,11 +4,11 @@ import { useCallback, useEffect } from 'react';
 import { useGameStore } from '@/store/game-store';
 import { PlayerField } from './player-field';
 import { AttackLine } from './attack-line';
-import { FollowerInstance, FollowerCardDefinition } from '@/types/card.types';
+import { FollowerInstance, CardDefinition } from '@/types/card.types';
 import { canFollowerAttack } from '@/lib/game-logic/combat';
 
 interface BoardProps {
-  onCardDetailView?: (definition: FollowerCardDefinition, instance?: FollowerInstance) => void;
+  onCardDetailView?: (definition: CardDefinition, instance?: FollowerInstance) => void;
 }
 
 export function Board({ onCardDetailView }: BoardProps) {
@@ -21,6 +21,7 @@ export function Board({ onCardDetailView }: BoardProps) {
   const selectAttacker = useGameStore((state) => state.selectAttacker);
   const executeAttack = useGameStore((state) => state.executeAttack);
   const cancelSelection = useGameStore((state) => state.cancelSelection);
+  const selectSpellTarget = useGameStore((state) => state.selectSpellTarget);
 
   // マウスアップで攻撃をキャンセル（ターゲット外でリリースした場合）
   const handleGlobalMouseUp = useCallback(() => {
@@ -64,6 +65,13 @@ export function Board({ onCardDetailView }: BoardProps) {
     index: number,
     follower: FollowerInstance | null
   ) => {
+    // スペルターゲット選択モードの場合
+    if (selection.mode === 'spell_target' && follower) {
+      if (selection.validTargets.includes(follower.instanceId)) {
+        selectSpellTarget(follower.instanceId);
+        return;
+      }
+    }
     if (follower) {
       handleFollowerClick('player1', follower.instanceId);
     } else {
@@ -75,6 +83,13 @@ export function Board({ onCardDetailView }: BoardProps) {
     index: number,
     follower: FollowerInstance | null
   ) => {
+    // スペルターゲット選択モードの場合
+    if (selection.mode === 'spell_target' && follower) {
+      if (selection.validTargets.includes(follower.instanceId)) {
+        selectSpellTarget(follower.instanceId);
+        return;
+      }
+    }
     if (follower) {
       handleFollowerClick('player2', follower.instanceId);
     } else {
@@ -83,6 +98,7 @@ export function Board({ onCardDetailView }: BoardProps) {
   };
 
   const isAttacking = selection.mode === 'selectTarget';
+  const isSpellTargeting = selection.mode === 'spell_target';
 
   return (
     <div className="flex flex-col gap-6 p-4 relative">
@@ -112,8 +128,8 @@ export function Board({ onCardDetailView }: BoardProps) {
       {/* 中央ライン */}
       <div className="flex items-center gap-4">
         <div className="flex-1 h-0.5 bg-gradient-to-r from-transparent via-gray-500 to-transparent" />
-        <div className={`text-sm px-4 ${isAttacking ? 'text-red-400 font-bold' : 'text-gray-500'}`}>
-          {isAttacking ? '⚔️ 攻撃中' : 'VS'}
+        <div className={`text-sm px-4 ${isAttacking ? 'text-red-400 font-bold' : isSpellTargeting ? 'text-purple-400 font-bold' : 'text-gray-500'}`}>
+          {isAttacking ? '⚔️ 攻撃中' : isSpellTargeting ? '✨ スペル発動' : 'VS'}
         </div>
         <div className="flex-1 h-0.5 bg-gradient-to-r from-transparent via-gray-500 to-transparent" />
       </div>

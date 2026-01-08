@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { getAllCards } from '@/data/sample-cards';
-import { FollowerCardDefinition } from '@/types/card.types';
+import { FollowerCardDefinition, CardDefinition } from '@/types/card.types';
 
 const abilityColors: Record<string, string> = {
   Rush: 'bg-orange-600',
@@ -202,7 +202,10 @@ function CardDetail({ card }: { card: FollowerCardDefinition }) {
 }
 
 export default function CardsPage() {
-  const cards = getAllCards();
+  const allCards = getAllCards();
+
+  // フォロワーカードのみをフィルタリング
+  const cards = allCards.filter((c): c is FollowerCardDefinition => c.type === 'follower');
 
   // コスト順にソート
   const sortedCards = [...cards].sort((a, b) => a.cost - b.cost);

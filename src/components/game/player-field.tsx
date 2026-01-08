@@ -1,6 +1,6 @@
 'use client';
 
-import { FollowerInstance, FollowerCardDefinition } from '@/types/card.types';
+import { FollowerInstance, CardDefinition } from '@/types/card.types';
 import { PlayerId } from '@/types/game.types';
 import { FollowerSlot } from './follower-slot';
 import { getCardDefinition } from '@/data/sample-cards';
@@ -14,7 +14,7 @@ interface PlayerFieldProps {
   onSlotClick: (index: number, follower: FollowerInstance | null) => void;
   onSlotMouseUp?: (index: number, follower: FollowerInstance | null) => void;
   onSlotMouseDown?: (index: number, follower: FollowerInstance | null) => void;
-  onCardDetailView?: (definition: FollowerCardDefinition, instance: FollowerInstance) => void;
+  onCardDetailView?: (definition: CardDefinition, instance: FollowerInstance) => void;
 }
 
 export function PlayerField({

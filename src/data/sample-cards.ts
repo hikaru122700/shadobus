@@ -1,7 +1,8 @@
-import { FollowerCardDefinition } from '@/types/card.types';
+import { FollowerCardDefinition, SpellCardDefinition, CardDefinition } from '@/types/card.types';
 
-// Shadowverse Worlds Beyond カードデータベース - 300枚収録
-export const CARD_DATABASE: Record<string, FollowerCardDefinition> = {
+// Shadowverse Worlds Beyond フォロワーカードデータベース - 300枚収録
+// Note: type: 'follower' は getCardDefinition で自動追加される
+export const FOLLOWER_DATABASE: Record<string, Omit<FollowerCardDefinition, 'type'>> = {
   // ===== ニュートラル (40枚) =====
   goblin: {
     id: 'goblin',
@@ -2719,17 +2720,259 @@ export const CARD_DATABASE: Record<string, FollowerCardDefinition> = {
   },
 };
 
-// カード定義を取得
-export function getCardDefinition(id: string): FollowerCardDefinition | undefined {
-  return CARD_DATABASE[id];
+// スペルカードデータベース
+export const SPELL_DATABASE: Record<string, Omit<SpellCardDefinition, 'type'>> = {
+  // ===== ダメージスペル =====
+  'fireball': {
+    id: 'fireball',
+    name: 'ファイアボール',
+    cost: 2,
+    targetType: 'enemy_follower',
+    effects: [{ type: 'damage', amount: 3, target: 'selected' }],
+    description: '敵フォロワー1体に3ダメージ',
+  },
+  'lightning-bolt': {
+    id: 'lightning-bolt',
+    name: 'ライトニングボルト',
+    cost: 1,
+    targetType: 'enemy_follower',
+    effects: [{ type: 'damage', amount: 2, target: 'selected' }],
+    description: '敵フォロワー1体に2ダメージ',
+  },
+  'inferno': {
+    id: 'inferno',
+    name: 'インフェルノ',
+    cost: 5,
+    targetType: 'none',
+    effects: [{ type: 'damage', amount: 3, target: 'all_enemies' }],
+    description: '敵フォロワー全体に3ダメージ',
+  },
+  'meteor-strike': {
+    id: 'meteor-strike',
+    name: 'メテオストライク',
+    cost: 7,
+    targetType: 'none',
+    effects: [{ type: 'damage', amount: 5, target: 'all_enemies' }],
+    description: '敵フォロワー全体に5ダメージ',
+  },
+  'flame-lance': {
+    id: 'flame-lance',
+    name: 'フレイムランス',
+    cost: 4,
+    targetType: 'enemy_leader',
+    effects: [{ type: 'damage', amount: 4, target: 'enemy_leader' }],
+    description: '敵リーダーに4ダメージ',
+  },
+
+  // ===== 回復スペル =====
+  'healing-prayer': {
+    id: 'healing-prayer',
+    name: '癒しの祈り',
+    cost: 2,
+    targetType: 'none',
+    effects: [{ type: 'heal', amount: 4, target: 'own_leader' }],
+    description: '自分のリーダーを4回復',
+  },
+  'divine-blessing': {
+    id: 'divine-blessing',
+    name: '神聖なる祝福',
+    cost: 4,
+    targetType: 'none',
+    effects: [{ type: 'heal', amount: 8, target: 'own_leader' }],
+    description: '自分のリーダーを8回復',
+  },
+  'restoration': {
+    id: 'restoration',
+    name: 'レストレーション',
+    cost: 3,
+    targetType: 'own_follower',
+    effects: [{ type: 'heal', amount: 5, target: 'selected_follower' }],
+    description: '味方フォロワー1体を5回復',
+  },
+
+  // ===== ドロースペル =====
+  'insight': {
+    id: 'insight',
+    name: 'インサイト',
+    cost: 1,
+    targetType: 'none',
+    effects: [{ type: 'draw', count: 1 }],
+    description: 'カードを1枚引く',
+  },
+  'arcane-wisdom': {
+    id: 'arcane-wisdom',
+    name: '秘術の知恵',
+    cost: 3,
+    targetType: 'none',
+    effects: [{ type: 'draw', count: 2 }],
+    description: 'カードを2枚引く',
+  },
+  'forbidden-knowledge': {
+    id: 'forbidden-knowledge',
+    name: '禁忌の知識',
+    cost: 5,
+    targetType: 'none',
+    effects: [{ type: 'draw', count: 3 }],
+    description: 'カードを3枚引く',
+  },
+
+  // ===== バフスペル =====
+  'battle-cry': {
+    id: 'battle-cry',
+    name: '戦いの雄叫び',
+    cost: 2,
+    targetType: 'own_follower',
+    effects: [{ type: 'buff', attackDelta: 2, healthDelta: 0, target: 'selected' }],
+    description: '味方フォロワー1体を+2/+0',
+  },
+  'divine-protection': {
+    id: 'divine-protection',
+    name: '神の加護',
+    cost: 2,
+    targetType: 'own_follower',
+    effects: [{ type: 'buff', attackDelta: 0, healthDelta: 3, target: 'selected' }],
+    description: '味方フォロワー1体を+0/+3',
+  },
+  'empower': {
+    id: 'empower',
+    name: 'エンパワー',
+    cost: 3,
+    targetType: 'own_follower',
+    effects: [{ type: 'buff', attackDelta: 2, healthDelta: 2, target: 'selected' }],
+    description: '味方フォロワー1体を+2/+2',
+  },
+  'mass-blessing': {
+    id: 'mass-blessing',
+    name: '全体祝福',
+    cost: 5,
+    targetType: 'none',
+    effects: [{ type: 'buff', attackDelta: 1, healthDelta: 1, target: 'all_own_followers' }],
+    description: '味方フォロワー全体を+1/+1',
+  },
+
+  // ===== デバフスペル =====
+  'weaken': {
+    id: 'weaken',
+    name: 'ウィークン',
+    cost: 1,
+    targetType: 'enemy_follower',
+    effects: [{ type: 'debuff', attackDelta: 2, healthDelta: 0, target: 'selected' }],
+    description: '敵フォロワー1体を-2/-0',
+  },
+  'curse': {
+    id: 'curse',
+    name: '呪い',
+    cost: 2,
+    targetType: 'enemy_follower',
+    effects: [{ type: 'debuff', attackDelta: 1, healthDelta: 2, target: 'selected' }],
+    description: '敵フォロワー1体を-1/-2',
+  },
+
+  // ===== 破壊スペル =====
+  'execution': {
+    id: 'execution',
+    name: '処刑',
+    cost: 5,
+    targetType: 'enemy_follower',
+    effects: [{ type: 'destroy', target: 'selected' }],
+    description: '敵フォロワー1体を破壊',
+  },
+  'apocalypse': {
+    id: 'apocalypse',
+    name: 'アポカリプス',
+    cost: 9,
+    targetType: 'none',
+    effects: [{ type: 'destroy', target: 'all_enemies' }],
+    description: '敵フォロワー全体を破壊',
+  },
+  'random-destruction': {
+    id: 'random-destruction',
+    name: '無作為破壊',
+    cost: 3,
+    targetType: 'none',
+    effects: [{ type: 'destroy', target: 'random_enemy' }],
+    description: 'ランダムな敵フォロワー1体を破壊',
+  },
+
+  // ===== 召喚スペル =====
+  'summon-goblins': {
+    id: 'summon-goblins',
+    name: 'ゴブリン召喚',
+    cost: 3,
+    targetType: 'none',
+    effects: [{ type: 'summon', tokenId: 'goblin', count: 2 }],
+    description: 'ゴブリンを2体召喚',
+  },
+  'summon-fairy': {
+    id: 'summon-fairy',
+    name: 'フェアリー召喚',
+    cost: 1,
+    targetType: 'none',
+    effects: [{ type: 'summon', tokenId: 'fairy', count: 1 }],
+    description: 'フェアリーを1体召喚',
+  },
+
+  // ===== 複合スペル =====
+  'flame-and-draw': {
+    id: 'flame-and-draw',
+    name: '炎と知識',
+    cost: 4,
+    targetType: 'enemy_follower',
+    effects: [
+      { type: 'damage', amount: 2, target: 'selected' },
+      { type: 'draw', count: 1 },
+    ],
+    description: '敵フォロワー1体に2ダメージ、カードを1枚引く',
+  },
+  'heal-and-buff': {
+    id: 'heal-and-buff',
+    name: '祝福の光',
+    cost: 4,
+    targetType: 'own_follower',
+    effects: [
+      { type: 'heal', amount: 3, target: 'selected_follower' },
+      { type: 'buff', attackDelta: 1, healthDelta: 1, target: 'selected' },
+    ],
+    description: '味方フォロワー1体を3回復、+1/+1',
+  },
+};
+
+// 互換性のためのエイリアス
+export const CARD_DATABASE = FOLLOWER_DATABASE;
+
+// カード定義を取得（フォロワーとスペル両方）
+export function getCardDefinition(id: string): CardDefinition | undefined {
+  // まずフォロワーを検索
+  const follower = FOLLOWER_DATABASE[id];
+  if (follower) {
+    return { ...follower, type: 'follower' } as FollowerCardDefinition;
+  }
+
+  // 次にスペルを検索
+  const spell = SPELL_DATABASE[id];
+  if (spell) {
+    return { ...spell, type: 'spell' } as SpellCardDefinition;
+  }
+
+  return undefined;
+}
+
+// 全フォロワーカードを取得
+export function getAllFollowers(): FollowerCardDefinition[] {
+  return Object.values(FOLLOWER_DATABASE).map(f => ({ ...f, type: 'follower' as const }));
+}
+
+// 全スペルカードを取得
+export function getAllSpells(): SpellCardDefinition[] {
+  return Object.values(SPELL_DATABASE).map(s => ({ ...s, type: 'spell' as const }));
 }
 
 // 全カードを取得
-export function getAllCards(): FollowerCardDefinition[] {
-  return Object.values(CARD_DATABASE);
+export function getAllCards(): CardDefinition[] {
+  return [...getAllFollowers(), ...getAllSpells()];
 }
 
-// ランダムなデッキを生成（30枚、同一カード最大3枚）
+// ランダムなデッキを生成（30枚、同一カード最大3枚、スペル含む）
 export function generateRandomDeck(size: number = 30): string[] {
   const allCardIds = Object.keys(CARD_DATABASE);
   const deck: string[] = [];

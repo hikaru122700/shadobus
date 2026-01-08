@@ -1,11 +1,20 @@
 'use client';
 
-import { FollowerInstance, FollowerCardDefinition, FollowerAbility } from '@/types/card.types';
+import {
+  FollowerInstance,
+  FollowerCardDefinition,
+  SpellCardDefinition,
+  CardDefinition,
+} from '@/types/card.types';
 
 interface CardDetailPanelProps {
-  definition: FollowerCardDefinition;
+  definition: CardDefinition;
   instance?: FollowerInstance;
   onClose: () => void;
+  canEvolve?: boolean;
+  canSuperEvolve?: boolean;
+  onEvolve?: () => void;
+  onSuperEvolve?: () => void;
 }
 
 const abilityColors: Record<string, string> = {
@@ -123,21 +132,100 @@ function getCardEmoji(id: string): string {
   return cardEmojis[id] || '❓';
 }
 
+const spellEmojis: Record<string, string> = {
+  fireball: '🔥', blazing_breath: '🐉', lightning_bolt: '⚡', meteor_strike: '☄️',
+  inferno: '🌋', shadow_bolt: '🌑', ice_lance: '🧊', flame_wave: '🔥',
+  healing_prayer: '💚', natures_blessing: '🌿', divine_protection: '✨', rejuvenation: '🌸',
+  arcane_insight: '📖', fate_hand: '🎴', knowledge_scroll: '📜',
+  warriors_blessing: '⚔️', divine_strength: '💪', battle_cry: '📯',
+  curse: '💀', weakness: '😵', silence: '🤫',
+  execution: '⚰️', banishment: '🌀', annihilation: '💥',
+  summon_fairy: '🧚', raise_skeleton: '💀', create_golem: '🗿',
+  flame_and_heal: '🔥💚', draw_and_buff: '📖⚔️', damage_and_draw: '💥📖',
+};
+
+function getSpellEmoji(id: string): string {
+  return spellEmojis[id] || '✨';
+}
+
+const targetTypeLabels: Record<string, string> = {
+  none: 'ターゲット不要',
+  own_follower: '味方フォロワー1体',
+  enemy_follower: '敵フォロワー1体',
+  any_follower: 'フォロワー1体',
+  enemy_leader: '敵リーダー',
+  all_enemies: '敵全体',
+};
+
 export function CardDetailPanel({
   definition,
   instance,
   onClose,
+  canEvolve = false,
+  canSuperEvolve = false,
+  onEvolve,
+  onSuperEvolve,
 }: CardDetailPanelProps) {
-  const attack = instance?.currentAttack ?? definition.baseAttack;
-  const health = instance?.currentHealth ?? definition.baseHealth;
-  const maxHealth = instance?.maxHealth ?? definition.baseHealth;
-  const abilities = instance?.abilities ?? definition.abilities;
+  const isSpell = definition.type === 'spell';
 
-  const handleBackgroundClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  };
+  // スペルカードの詳細パネル
+  if (isSpell) {
+    const spellDef = definition as SpellCardDefinition;
+    return (
+      <div
+        data-detail-panel
+        className="absolute top-16 left-4 z-40 w-64 bg-purple-900 rounded-xl border border-purple-600 shadow-2xl p-4 animate-fade-in"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* 閉じるボタン */}
+        <button
+          onClick={onClose}
+          className="absolute top-2 right-2 w-6 h-6 rounded-full bg-purple-800 hover:bg-purple-700 flex items-center justify-center text-purple-300 hover:text-white transition-colors"
+        >
+          ×
+        </button>
+
+        {/* スペルタイプバッジ */}
+        <div className="text-purple-300 text-xs mb-1">スペル</div>
+
+        {/* カード名 */}
+        <h2 className="text-xl font-bold text-white mb-3 pr-6">{spellDef.name}</h2>
+
+        {/* 絵文字アート */}
+        <div className="w-full h-24 bg-gradient-to-br from-purple-700 to-purple-900 rounded-lg flex items-center justify-center mb-3">
+          <span className="text-6xl">{getSpellEmoji(spellDef.id)}</span>
+        </div>
+
+        {/* コストとターゲット */}
+        <div className="flex justify-between items-center mb-3 px-2">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">
+              {spellDef.cost}
+            </div>
+            <span className="text-gray-400 text-sm">コスト</span>
+          </div>
+          <div className="text-purple-300 text-sm">
+            {targetTypeLabels[spellDef.targetType] || spellDef.targetType}
+          </div>
+        </div>
+
+        {/* 効果説明 */}
+        {spellDef.description && (
+          <div className="border-t border-purple-700 pt-2">
+            <div className="text-purple-300 text-xs mb-1">効果</div>
+            <div className="text-white text-sm">{spellDef.description}</div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // フォロワーカードの詳細パネル
+  const followerDef = definition as FollowerCardDefinition;
+  const attack = instance?.currentAttack ?? followerDef.baseAttack;
+  const health = instance?.currentHealth ?? followerDef.baseHealth;
+  const maxHealth = instance?.maxHealth ?? followerDef.baseHealth;
+  const abilities = instance?.abilities ?? followerDef.abilities;
 
   return (
     <div
@@ -154,18 +242,18 @@ export function CardDetailPanel({
       </button>
 
       {/* カード名 */}
-      <h2 className="text-xl font-bold text-white mb-3 pr-6">{definition.name}</h2>
+      <h2 className="text-xl font-bold text-white mb-3 pr-6">{followerDef.name}</h2>
 
       {/* 絵文字アート */}
       <div className="w-full h-24 bg-gradient-to-br from-gray-600 to-gray-700 rounded-lg flex items-center justify-center mb-3">
-        <span className="text-6xl">{getCardEmoji(definition.id)}</span>
+        <span className="text-6xl">{getCardEmoji(followerDef.id)}</span>
       </div>
 
       {/* ステータス */}
       <div className="flex justify-between items-center mb-3 px-2">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">
-            {definition.cost}
+            {followerDef.cost}
           </div>
           <span className="text-gray-400 text-sm">コスト</span>
         </div>
@@ -205,10 +293,10 @@ export function CardDetailPanel({
       )}
 
       {/* カード説明 */}
-      {definition.description && (
+      {followerDef.description && (
         <div className="border-t border-gray-700 pt-2">
           <div className="text-gray-400 text-xs mb-1">説明</div>
-          <div className="text-gray-300 text-sm">{definition.description}</div>
+          <div className="text-gray-300 text-sm">{followerDef.description}</div>
         </div>
       )}
 
@@ -226,7 +314,49 @@ export function CardDetailPanel({
             {instance.canAttack && !instance.hasAttacked && (
               <span className="text-xs bg-green-900 px-2 py-0.5 rounded text-green-300">攻撃可能</span>
             )}
+            {instance.isEvolved && (
+              <span className="text-xs bg-purple-900 px-2 py-0.5 rounded text-purple-300">進化済み</span>
+            )}
+            {instance.isSuperEvolved && (
+              <span className="text-xs bg-yellow-900 px-2 py-0.5 rounded text-yellow-300">超進化済み</span>
+            )}
+            {instance.superEvolvedThisTurn && (
+              <span className="text-xs bg-cyan-900 px-2 py-0.5 rounded text-cyan-300">耐性発動中</span>
+            )}
           </div>
+        </div>
+      )}
+
+      {/* 進化ボタン */}
+      {instance && !instance.isEvolved && !instance.isSuperEvolved && (canEvolve || canSuperEvolve) && (
+        <div className="border-t border-gray-700 pt-3 mt-2 space-y-2">
+          {canEvolve && (
+            <button
+              onClick={() => {
+                onEvolve?.();
+                onClose();
+              }}
+              className="w-full px-3 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-sm font-bold text-white transition-colors"
+            >
+              進化 (+2/+2)
+            </button>
+          )}
+          {canSuperEvolve && (
+            <div>
+              <button
+                onClick={() => {
+                  onSuperEvolve?.();
+                  onClose();
+                }}
+                className="w-full px-3 py-2 bg-gradient-to-r from-yellow-600 to-orange-500 hover:from-yellow-500 hover:to-orange-400 rounded-lg text-sm font-bold text-white transition-colors"
+              >
+                超進化 (+3/+3)
+              </button>
+              <div className="text-xs text-gray-400 mt-1 text-center">
+                自ターン中: ダメージ無効・破壊耐性・ふっとび
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
